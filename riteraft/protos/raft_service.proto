@@ -5,7 +5,7 @@ import "eraftpb.proto";
 
 service RaftService {
   rpc RequestId(Empty) returns (IdRequestResponse) {}
-  rpc ChangeConfig(eraftpb.ConfChange) returns (RaftResponse) {}
+  rpc ChangeConfig(eraftpb.ConfChangeV2) returns (RaftResponse) {}
   rpc SendMessage(eraftpb.Message) returns (RaftResponse) {}
 }
 

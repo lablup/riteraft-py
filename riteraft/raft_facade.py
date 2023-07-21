@@ -83,6 +83,8 @@ class RaftClusterFacade:
         conf_change.set_change_type(ConfChangeType.AddNode)
         conf_change.set_context(pickle.dumps(self.addr))
 
+        cc_v2 = conf_change.as_v2()
+
         # TODO: Should handle wrong leader error here because the leader might change in the meanwhile.
-        await client.change_config(conf_change)
+        await client.change_config(cc_v2)
         await raft_node_handle

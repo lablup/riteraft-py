@@ -8,9 +8,34 @@ from google.protobuf import message as _message
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 
 DESCRIPTOR: _descriptor.FileDescriptor
-Error: ResultCode
+
+class ResultCode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = []
+    Ok: _ClassVar[ResultCode]
+    Error: _ClassVar[ResultCode]
+    WrongLeader: _ClassVar[ResultCode]
+
 Ok: ResultCode
+Error: ResultCode
 WrongLeader: ResultCode
+
+class Proposal(_message.Message):
+    __slots__ = ["inner"]
+    INNER_FIELD_NUMBER: _ClassVar[int]
+    inner: bytes
+    def __init__(self, inner: _Optional[bytes] = ...) -> None: ...
+
+class IdRequestResponse(_message.Message):
+    __slots__ = ["code", "data"]
+    CODE_FIELD_NUMBER: _ClassVar[int]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    code: ResultCode
+    data: bytes
+    def __init__(
+        self,
+        code: _Optional[_Union[ResultCode, str]] = ...,
+        data: _Optional[bytes] = ...,
+    ) -> None: ...
 
 class Empty(_message.Message):
     __slots__ = []
@@ -26,29 +51,8 @@ class Entry(_message.Message):
         self, key: _Optional[int] = ..., value: _Optional[str] = ...
     ) -> None: ...
 
-class IdRequestResponse(_message.Message):
-    __slots__ = ["code", "data"]
-    CODE_FIELD_NUMBER: _ClassVar[int]
-    DATA_FIELD_NUMBER: _ClassVar[int]
-    code: ResultCode
-    data: bytes
-    def __init__(
-        self,
-        code: _Optional[_Union[ResultCode, str]] = ...,
-        data: _Optional[bytes] = ...,
-    ) -> None: ...
-
-class Proposal(_message.Message):
-    __slots__ = ["inner"]
-    INNER_FIELD_NUMBER: _ClassVar[int]
-    inner: bytes
-    def __init__(self, inner: _Optional[bytes] = ...) -> None: ...
-
 class RaftResponse(_message.Message):
     __slots__ = ["inner"]
     INNER_FIELD_NUMBER: _ClassVar[int]
     inner: bytes
     def __init__(self, inner: _Optional[bytes] = ...) -> None: ...
-
-class ResultCode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-    __slots__ = []

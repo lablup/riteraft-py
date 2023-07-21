@@ -6,7 +6,8 @@ from asyncio import Queue
 from typing import Dict, List, Optional
 
 from rraft import (
-    ConfChange,
+    ConfChangeSingle,
+    ConfChangeV2,
     ConfChangeType,
     Config,
     Entry,
@@ -35,7 +36,7 @@ from riteraft.message import (
     RaftRespWrongLeader,
 )
 from riteraft.message_sender import MessageSender
-from riteraft.pb_adapter import ConfChangeAdapter, MessageAdapter
+from riteraft.pb_adapter import ConfChangeV2Adapter, MessageAdapter
 from riteraft.raft_client import RaftClient
 from riteraft.utils import AtomicInteger
 
@@ -212,6 +213,8 @@ class RaftNode:
                 case EntryType.EntryNormal:
                     await self.handle_normal_entry(entry, client_senders)
                 case EntryType.EntryConfChange:
+                    assert False, "EntryConfChangeV1 not supported!"
+                case EntryType.EntryConfChangeV2:
                     await self.handle_config_change_entry(entry, client_senders)
                 case _:
                     raise NotImplementedError
@@ -241,54 +244,62 @@ class RaftNode:
         self, entry: Entry | EntryRef, senders: Dict[int, Queue]
     ) -> None:
         seq = pickle.loads(entry.get_context())
-        change = ConfChange.decode(entry.get_data())
-        node_id = change.get_node_id()
+        cc = ConfChangeV2.decode(entry.get_data())
+        print('changes.get_changes() 1', cc.get_changes())
+        print('changes.enter_joint() 1', cc.enter_joint())
 
-        change_type = change.get_change_type()
+        changes = cc.get_changes()
 
-        match change_type:
-            case ConfChangeType.AddNode:
-                addr = pickle.loads(change.get_context())
-                logging.info(
-                    f"Node '{addr} (node id: {node_id})' added to the cluster."
-                )
-                self.peers[node_id] = RaftClient(addr)
-            case ConfChangeType.RemoveNode:
-                if change.get_node_id() == self.id():
-                    self.should_quit = True
-                    logging.warning("Quitting the cluster.")
-                else:
-                    self.peers.pop(change.get_node_id(), None)
-            case _:
-                raise NotImplementedError
+        for change in changes:
+            change: ConfChangeSingle = change
+            node_id = change.get_node_id()
 
-        if cs := self.raw_node.apply_conf_change(change):
-            last_applied = self.raw_node.get_raft().get_raft_log().get_applied()
-            snapshot = await self.fsm.snapshot()
-
-            self.lmdb.set_conf_state(cs)
-            self.lmdb.compact(last_applied)
-
-            try:
-                self.lmdb.create_snapshot(snapshot, entry.get_index(), entry.get_term())
-            except Exception:
-                pass
-
-        if sender := senders.pop(seq, None):
-            match change_type:
+            match change.get_change_type():
                 case ConfChangeType.AddNode:
-                    response = RaftRespJoinSuccess(
-                        assigned_id=node_id, peer_addrs=self.peer_addrs()
+                    addr = pickle.loads(cc.get_context())
+                    logging.info(
+                        f"Node '{addr} (node id: {node_id})' added to the cluster."
                     )
+                    self.peers[node_id] = RaftClient(addr)
                 case ConfChangeType.RemoveNode:
-                    response = RaftRespOk()
+                    if change.get_node_id() == self.id():
+                        self.should_quit = True
+                        logging.warning("Quitting the cluster.")
+                    else:
+                        self.peers.pop(change.get_node_id(), None)
                 case _:
                     raise NotImplementedError
 
-            try:
-                sender.put_nowait(response)
-            except Exception:
-                logging.error("Error sending response")
+        cs = self.raw_node.apply_conf_change_v2(cc)
+
+        for change in changes:
+            if cs:
+                last_applied = self.raw_node.get_raft().get_raft_log().get_applied()
+                snapshot = await self.fsm.snapshot()
+
+                self.lmdb.set_conf_state(cs)
+                self.lmdb.compact(last_applied)
+
+                try:
+                    self.lmdb.create_snapshot(snapshot, entry.get_index(), entry.get_term())
+                except Exception:
+                    pass
+
+            if sender := senders.pop(seq, None):
+                match change.get_change_type():
+                    case ConfChangeType.AddNode:
+                        response = RaftRespJoinSuccess(
+                            assigned_id=node_id, peer_addrs=self.peer_addrs()
+                        )
+                    case ConfChangeType.RemoveNode:
+                        response = RaftRespOk()
+                    case _:
+                        raise NotImplementedError
+
+                try:
+                    sender.put_nowait(response)
+                except Exception:
+                    logging.error("Error sending response")
 
     async def run(self) -> None:
         heartbeat = 0.1
@@ -315,23 +326,27 @@ class RaftNode:
                 raise
 
             if isinstance(message, MessageConfigChange):
-                change = ConfChangeAdapter.from_pb(message.change)
+                cc = ConfChangeV2Adapter.from_pb(message.change)
+                print('changes.get_changes()', cc.get_changes())
+                print('changes.enter_joint()', cc.enter_joint())
 
-                # whenever a change id is 0, it's a message to self.
-                if change.get_node_id() == 0:
-                    change.set_node_id(self.id())
+                for change in cc.get_changes():
+                    # whenever a change id is 0, it's a message to self.
+                    if change.get_node_id() == 0:
+                        change.set_node_id(self.id())
 
-                if not self.is_leader():
-                    # wrong leader send client cluster data
-                    # TODO: retry strategy in case of failure
-                    await self.send_wrong_leader(channel=message.chan)
-                else:
-                    # leader assign new id to peer
-                    logging.debug(f"Received request from: {change.get_node_id()}")
-                    self.seq.increase()
-                    client_senders[self.seq.value] = message.chan
-                    context = pickle.dumps(self.seq.value)
-                    self.raw_node.propose_conf_change(context, change)
+                    if not self.is_leader():
+                        # wrong leader send client cluster data
+                        # TODO: retry strategy in case of failure
+                        await self.send_wrong_leader(channel=message.chan)
+                    else:
+                        # leader assign new id to peer
+                        logging.debug(f"Received request from: {change.get_node_id()}")
+                        self.seq.increase()
+                        client_senders[self.seq.value] = message.chan
+                        context = pickle.dumps(self.seq.value)
+
+                self.raw_node.propose_conf_change_v2(context, cc)
 
             elif isinstance(message, MessagePropose):
                 if not self.is_leader():

@@ -47,8 +47,11 @@ class Mailbox:
         change.set_node_id(0)
         change.set_change_type(ConfChangeType.RemoveNode)
 
+        cc_v2 = change.as_v2()
+
         receiver = Queue()
-        if await self.__sender.put(MessageConfigChange(change, receiver)):
+        print('cc_v2!!', cc_v2)
+        if await self.__sender.put(MessageConfigChange(cc_v2, receiver)):
             resp = await receiver.get()
             if isinstance(resp, RaftRespOk):
                 return

@@ -2,7 +2,7 @@ import pickle
 from multiprocessing import Queue
 from typing import Dict
 
-from riteraft.protos.eraftpb_pb2 import ConfChange, Message
+from riteraft.protos.eraftpb_pb2 import ConfChangeV2, Message
 
 
 class Encoder:
@@ -77,7 +77,7 @@ class MessagePropose(Encoder):
 
 
 class MessageConfigChange(Encoder):
-    def __init__(self, change: ConfChange, chan: Queue):
+    def __init__(self, change: ConfChangeV2, chan: Queue):
         self.change = change
         self.chan = chan
 
