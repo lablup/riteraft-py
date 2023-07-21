@@ -182,14 +182,14 @@ class RaftNode:
     async def send_wrong_leader(self, channel: Queue) -> None:
         assert self.leader() in self.peers, "Leader can't be an empty node!"
 
-        raft_response = RaftRespWrongLeader(
-            leader_id=self.leader(),
-            leader_addr=str(self.peers[self.leader()].addr),
-        )
-
         try:
             # TODO handle error here
-            await channel.put(raft_response)
+            await channel.put(
+                RaftRespWrongLeader(
+                    leader_id=self.leader(),
+                    leader_addr=str(self.peers[self.leader()].addr),
+                )
+            )
         except Exception:
             pass
 
@@ -324,7 +324,7 @@ class RaftNode:
                 if not self.is_leader():
                     # wrong leader send client cluster data
                     # TODO: retry strategy in case of failure
-                    await self.send_wrong_leader(channel=message.chan)
+                    await self.send_wrong_leader(message.chan)
                 else:
                     # leader assign new id to peer
                     logging.debug(f"Received request from: {change.get_node_id()}")
@@ -351,8 +351,8 @@ class RaftNode:
                     await message.chan.put(
                         RaftRespIdReserved(
                             leader_id=self.leader(),
-                            peer_addrs=self.peer_addrs(),
                             reserved_id=self.reserve_next_peer_id(),
+                            peer_addrs=self.peer_addrs(),
                         )
                     )
 
