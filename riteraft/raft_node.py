@@ -147,7 +147,7 @@ class RaftNode:
         return self.id() == self.leader()
 
     def peer_addrs(self) -> Dict[int, str]:
-        return {k: str(v.addr) for k, v in self.peers.items()}
+        return {k: str(v.addr) for k, v in self.peers.items() if v is not None}
 
     def reserve_next_peer_id(self) -> int:
         """
@@ -349,7 +349,9 @@ class RaftNode:
                     await self.send_wrong_leader(message.chan)
                 else:
                     await message.chan.put(
-                        RaftRespIdReserved(self.reserve_next_peer_id())
+                        RaftRespIdReserved(
+                            self.reserve_next_peer_id(), self.peer_addrs()
+                        )
                     )
 
             elif isinstance(message, MessageRaft):

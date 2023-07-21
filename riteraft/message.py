@@ -31,8 +31,9 @@ class RaftRespJoinSuccess(Encoder):
 
 
 class RaftRespIdReserved(Encoder):
-    def __init__(self, id: int):
+    def __init__(self, id: int, peer_addrs: Dict[int, str]):
         self.id = id
+        self.peer_addrs = peer_addrs
 
     @classmethod
     def decode(cls, data: bytes) -> "RaftRespIdReserved":

@@ -40,14 +40,15 @@ class RaftService:
 
             return raft_service_pb2.IdRequestResponse(
                 code=raft_service_pb2.WrongLeader,
-                data=pickle.dumps(tuple([leader_id, leader_addr])),
+                data=pickle.dumps(tuple([leader_id, leader_addr, None])),
             )
         elif isinstance(response, RaftRespIdReserved):
             id = response.id
+            peer_addrs = response.peer_addrs
 
             return raft_service_pb2.IdRequestResponse(
                 code=raft_service_pb2.Ok,
-                data=pickle.dumps(tuple([1, id])),
+                data=pickle.dumps(tuple([1, id, peer_addrs])),
             )
         else:
             assert False, "Unreachable"
