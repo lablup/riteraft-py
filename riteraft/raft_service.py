@@ -43,12 +43,13 @@ class RaftService:
                 data=pickle.dumps(tuple([leader_id, leader_addr, None])),
             )
         elif isinstance(response, RaftRespIdReserved):
-            id = response.id
+            reserved_id = response.reserved_id
             peer_addrs = response.peer_addrs
+            leader_id = response.leader_id
 
             return raft_service_pb2.IdRequestResponse(
                 code=raft_service_pb2.Ok,
-                data=pickle.dumps(tuple([1, id, peer_addrs])),
+                data=pickle.dumps(tuple([leader_id, reserved_id, peer_addrs])),
             )
         else:
             assert False, "Unreachable"

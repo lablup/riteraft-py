@@ -350,7 +350,9 @@ class RaftNode:
                 else:
                     await message.chan.put(
                         RaftRespIdReserved(
-                            self.reserve_next_peer_id(), self.peer_addrs()
+                            leader_id=self.leader(),
+                            peer_addrs=self.peer_addrs(),
+                            reserved_id=self.reserve_next_peer_id(),
                         )
                     )
 

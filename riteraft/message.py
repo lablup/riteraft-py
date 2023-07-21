@@ -31,8 +31,9 @@ class RaftRespJoinSuccess(Encoder):
 
 
 class RaftRespIdReserved(Encoder):
-    def __init__(self, id: int, peer_addrs: Dict[int, str]):
-        self.id = id
+    def __init__(self, leader_id: int, reserved_id: int, peer_addrs: Dict[int, str]):
+        self.leader_id = leader_id
+        self.reserved_id = reserved_id
         self.peer_addrs = peer_addrs
 
     @classmethod
