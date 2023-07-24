@@ -54,7 +54,7 @@ class RaftClusterFacade:
 
         while not leader_addr:
             client = RaftClient(peer_addr)
-            resp = await client.request_id()
+            resp = await client.request_id(self.addr)
 
             match resp.code:
                 case raft_service_pb2.Ok:

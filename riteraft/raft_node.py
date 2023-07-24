@@ -110,7 +110,6 @@ class RaftNode:
         logger: Logger | LoggerRef,
     ) -> "RaftNode":
         config = Config.default()
-        assert id != 1, "Follower's id can't be 1"
 
         config.set_id(id)
         config.set_election_tick(10)
@@ -149,10 +148,20 @@ class RaftNode:
     def peer_addrs(self) -> Dict[int, str]:
         return {k: str(v.addr) for k, v in self.peers.items() if v is not None}
 
-    def reserve_next_peer_id(self) -> int:
+    def reserve_next_peer_id(self, addr: str) -> int:
         """
         Reserve a slot to insert node on next node addition commit.
         """
+        prev_conns = [
+            (id, peer) for id, peer in self.peers.items() if addr == peer.addr
+        ]
+
+        if len(prev_conns) > 0:
+            next_id = prev_conns[0][0]
+            self.peers[next_id] = None
+            logging.info(f"Reserved peer id {next_id}.")
+            return next_id
+
         next_id = max(self.peers.keys()) if any(self.peers) else 1
         # if assigned id is ourself, return next one
         next_id = max(next_id + 1, self.id())
@@ -351,7 +360,7 @@ class RaftNode:
                     await message.chan.put(
                         RaftRespIdReserved(
                             leader_id=self.leader(),
-                            reserved_id=self.reserve_next_peer_id(),
+                            reserved_id=self.reserve_next_peer_id(message.addr),
                             peer_addrs=self.peer_addrs(),
                         )
                     )

@@ -23,12 +23,13 @@ class RaftService:
         self.sender = sender
 
     async def RequestId(
-        self, request: raft_service_pb2.Empty, context: grpc.aio.ServicerContext
+        self, request: raft_service_pb2.RequestIdArgs, context: grpc.aio.ServicerContext
     ) -> raft_service_pb2.IdRequestResponse:
         chan = Queue()
+        addr = request.addr
 
         try:
-            await self.sender.put(MessageRequestId(chan))
+            await self.sender.put(MessageRequestId(addr, chan))
         except Exception:
             pass
 
