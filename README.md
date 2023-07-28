@@ -1,6 +1,6 @@
 # riteraft-py
 
-⚠️ This repository is WIP and currently even not working. Do not use this lib yet unless you're interested in contributing to this project.
+⚠️ This repository is porting of [riteraft](https://github.com/ritelabs/riteraft) and no longer maintained. If you're looking for a high-level Raft implementation, you can check out [riteraft-ng](https://github.com/lablup/riteraft-ng), which is a fork of `riteraft-py`.
 
 ---
 
